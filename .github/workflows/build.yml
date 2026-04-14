@@ -1,0 +1,14 @@
+name: Build IPA
+on: [push] # コードをアップロードするたびに自動で動く
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm install
+      - run: npx expo export
+      # ここでGitHubが自動で実機用のipaを作成し、保存します
