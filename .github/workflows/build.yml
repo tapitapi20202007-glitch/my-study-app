@@ -5,21 +5,30 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20 # 最新のExpoに合わせてバージョンを引き上げ
+          
       - name: Install Dependencies
         run: npm install
+        
       - name: Expo Prebuild
         run: npx expo prebuild --platform ios --no-install
+        
+      - name: Install xcpretty (ログ整理ツール)
+        run: gem install xcpretty
+        
       - name: Install Pods
         run: |
           cd ios
           pod install
+          
       - name: Build Unsigned IPA
         run: |
           cd ios
+          set -o pipefail
           xcodebuild -workspace *.xcworkspace \
             -scheme "$(ls -A | grep .xcworkspace | sed 's/.xcworkspace//')" \
             -configuration Release \
@@ -27,10 +36,15 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            clean build
+            clean build | xcpretty
+            
+      - name: Package IPA
+        run: |
+          cd ios
           mkdir -p Payload
           mv build/Release-iphoneos/*.app Payload/
           zip -r ../app-release.ipa Payload
+          
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
