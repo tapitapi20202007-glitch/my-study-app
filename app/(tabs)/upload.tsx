@@ -7,6 +7,7 @@ import {
   Alert,
   Image,
   Modal,
+  Platform, // ★追加: OSを判定するための機能
   ScrollView,
   StyleSheet,
   Text,
@@ -40,6 +41,27 @@ export default function UploadScreen() {
   const [manualAnswer, setManualAnswer] = useState('');
   const [manualExp, setManualExp] = useState('');
 
+  // ★追加: スマホとWebで画像の読み込み方を分ける魔法の関数
+  const getBase64 = async (uri: string): Promise<string> => {
+    if (Platform.OS === 'web') {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = (reader.result as string).split(',')[1];
+          resolve(base64String);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      return await FileSystem.readAsStringAsync(uri, {
+        encoding: 'base64',
+      });
+    }
+  };
+
   async function pickImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -60,9 +82,8 @@ export default function UploadScreen() {
     setErrorMessage(null);
 
     try {
-      const base64 = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: 'base64',
-      });
+      // ★修正: さっき作った関数を使ってBase64に変換する
+      const base64 = await getBase64(imageUri);
 
       const result = await analyzeImage(base64);
       const extracted = (result.questions as any[]).map((q) => ({

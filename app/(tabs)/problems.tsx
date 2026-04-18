@@ -3,8 +3,8 @@ import { deleteQuestion, getAllQuestions } from '@/services/db';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
-  Alert,
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -14,6 +14,11 @@ import {
 function formatDate(timestamp: number): string {
   const date = new Date(timestamp);
   return `${date.getMonth() + 1}月${date.getDate()}日にアップロード`;
+}
+
+function formatQuestionId(questionId: string): string {
+  if (questionId.startsWith('手動-')) return '手動保存';
+  return `問${questionId}`;
 }
 
 export default function ProblemsScreen() {
@@ -31,23 +36,33 @@ export default function ProblemsScreen() {
   }
 
   function handleDelete(id: string) {
-    Alert.alert(
-      '削除確認',
-      'この問題を削除しますか？',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: '削除',
-          style: 'destructive',
-          onPress: () => {
-            deleteQuestion(id);
-            setQuestions((prev) =>
-              prev.filter((q) => q.questionId !== id)
-            );
+    if (Platform.OS === 'web') {
+      // Web版はwindow.confirmを使う
+      const confirmed = window.confirm('この問題を削除しますか？');
+      if (confirmed) {
+        deleteQuestion(id);
+        setQuestions((prev) => prev.filter((q) => q.questionId !== id));
+      }
+    } else {
+      const { Alert } = require('react-native');
+      Alert.alert(
+        '削除確認',
+        'この問題を削除しますか？',
+        [
+          { text: 'キャンセル', style: 'cancel' },
+          {
+            text: '削除',
+            style: 'destructive',
+            onPress: () => {
+              deleteQuestion(id);
+              setQuestions((prev) =>
+                prev.filter((q) => q.questionId !== id)
+              );
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   }
 
   if (questions.length === 0) {
@@ -66,7 +81,7 @@ export default function ProblemsScreen() {
       renderItem={({ item }) => (
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardId}>問{item.questionId}</Text>
+            <Text style={styles.cardId}>{formatQuestionId(item.questionId)}</Text>
             <View style={styles.headerRight}>
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{item.wrongCount}回目</Text>
